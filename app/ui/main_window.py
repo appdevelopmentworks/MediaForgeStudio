@@ -134,15 +134,16 @@ class MainWindow(FluentWindow):
             NavigationItemPosition.TOP
         )
 
-        # 設定タブ（将来実装）
-        # from app.ui.tabs.settings_tab import SettingsTab
-        # self.settings_tab = SettingsTab(self)
-        # self.addSubInterface(
-        #     self.settings_tab,
-        #     FluentIcon.SETTING,
-        #     "設定",
-        #     NavigationItemPosition.BOTTOM
-        # )
+        # 設定タブ
+        from app.ui.tabs.settings_tab import SettingsTab
+        self.settings_tab = SettingsTab(self)
+        self.settings_tab.setObjectName("settingsTab")
+        self.addSubInterface(
+            self.settings_tab,
+            FluentIcon.SETTING,
+            "設定",
+            NavigationItemPosition.BOTTOM
+        )
 
         logger.debug("Navigation interface created")
 
