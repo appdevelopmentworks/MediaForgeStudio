@@ -64,7 +64,8 @@ temp/
 # PyInstaller
 build/
 dist/
-*.spec
+# *.spec  # Commented out - MediaForgeStudio.spec is needed for builds
+!MediaForgeStudio.spec
 
 # Jupyter Notebook
 .ipynb_checkpoints

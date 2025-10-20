@@ -64,30 +64,74 @@ MediaForge Studioは、YouTube動画のダウンロード、音声抽出、多�
 
 ### **インストール**
 
-#### **Pythonソースから実行する場合**
+#### **Windows 10/11**
 
 ```bash
 # 1. リポジトリクローン
 git clone https://github.com/your-repo/MediaForgeStudio.git
 cd MediaForgeStudio
 
-# 2. 仮想環境作成
+# 2. 仮想環境作成と有効化
 python -m venv venv
-
-# Windows
 venv\Scripts\activate
 
-# macOS/Linux
+# 3. FFmpegインストール（必須）
+# 方法1: Chocolateyを使用（推奨）
+choco install ffmpeg
+
+# 方法2: 手動インストール
+# https://ffmpeg.org/download.html からダウンロードし、PATHに追加
+
+# 4. 依存関係インストール
+pip install -r requirements.txt
+
+# 5. 環境変数設定（オプション）
+copy .env.template .env
+# .envファイルをメモ帳などで編集してAPIキーを設定
+
+# 6. アプリケーション起動
+python main.py
+```
+
+#### **macOS 11+**
+
+```bash
+# 1. リポジトリクローン
+git clone https://github.com/your-repo/MediaForgeStudio.git
+cd MediaForgeStudio
+
+# 2. 仮想環境作成と有効化
+python3 -m venv venv
 source venv/bin/activate
 
 # 3. FFmpegインストール（必須）
-# Windows
-choco install ffmpeg
-
-# macOS
+# Homebrewを使用（Homebrewが未インストールの場合は https://brew.sh/ からインストール）
 brew install ffmpeg
 
-# Linux
+# 4. 依存関係インストール
+pip install -r requirements.txt
+
+# 5. 環境変数設定（オプション）
+cp .env.template .env
+# .envファイルをテキストエディタで編集してAPIキーを設定
+
+# 6. アプリケーション起動
+python main.py
+```
+
+#### **Linux (Ubuntu/Debian)**
+
+```bash
+# 1. リポジトリクローン
+git clone https://github.com/your-repo/MediaForgeStudio.git
+cd MediaForgeStudio
+
+# 2. 仮想環境作成と有効化
+python3 -m venv venv
+source venv/bin/activate
+
+# 3. FFmpegインストール（必須）
+sudo apt update
 sudo apt install ffmpeg
 
 # 4. 依存関係インストール
@@ -95,14 +139,17 @@ pip install -r requirements.txt
 
 # 5. 環境変数設定（オプション）
 cp .env.template .env
-# .envファイルを編集してAPIキーを設定
+# .envファイルをテキストエディタで編集してAPIキーを設定
 
 # 6. アプリケーション起動
 python main.py
 ```
 
-#### **配布版（.EXE）**
+#### **配布版（.EXE/.app）**
 現在準備中です。将来的にPyInstallerでビルドしたバイナリを提供予定。
+- Windows: .exeファイル
+- macOS: .appバンドル
+- Linux: AppImageまたはバイナリ
 
 ---
 

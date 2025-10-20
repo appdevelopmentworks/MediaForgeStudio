@@ -25,7 +25,8 @@ from qfluentwidgets import (
     StrongBodyLabel,
     PrimaryPushButton,
     FluentIcon,
-    TextEdit
+    TextEdit,
+    CheckBox
 )
 from loguru import logger
 
@@ -37,7 +38,7 @@ from app.core.tts_manager import TTSManager, TTSConfig
 
 class DubbingWorker(QObject):
     """吹き替え処理ワーカー"""
-    finished = Signal(str)  # 出力ファイルパス
+    finished = Signal(str, str)  # 出力音声ファイルパス, テキストファイルパス
     error = Signal(str)
     progress = Signal(int, str)  # 進捗%, ステータスメッセージ
 
@@ -54,7 +55,8 @@ class DubbingWorker(QObject):
         video_path: str,
         target_lang: str,
         tts_engine: str,
-        voice: Optional[str]
+        voice: Optional[str],
+        save_text: bool = True
     ):
         """吹き替え処理"""
         try:
@@ -99,8 +101,22 @@ class DubbingWorker(QObject):
             )
             logger.info(f"TTS synthesis completed: {tts_result.audio_path}")
 
+            # 5. テキストファイルに保存（オプション）
+            text_file_path = ""
+            if save_text:
+                self.progress.emit(95, "テキストを保存中...")
+                text_file_path = self._save_translation_text(
+                    video_path,
+                    transcription.text,
+                    translation.translated_text,
+                    transcription.language,
+                    target_lang,
+                    translation.engine
+                )
+                logger.info(f"Translation text saved: {text_file_path}")
+
             self.progress.emit(100, "完了！")
-            self.finished.emit(tts_result.audio_path)
+            self.finished.emit(tts_result.audio_path, text_file_path)
 
         except Exception as e:
             logger.error(f"Dubbing failed: {e}")
@@ -109,6 +125,65 @@ class DubbingWorker(QObject):
         finally:
             if self.loop:
                 self.loop.close()
+
+    def _save_translation_text(
+        self,
+        video_path: str,
+        original_text: str,
+        translated_text: str,
+        source_lang: str,
+        target_lang: str,
+        translation_engine: str
+    ) -> str:
+        """
+        翻訳結果をテキストファイルに保存
+
+        Args:
+            video_path: 元の動画ファイルパス
+            original_text: 元のテキスト
+            translated_text: 翻訳されたテキスト
+            source_lang: 元の言語
+            target_lang: 翻訳先の言語
+            translation_engine: 使用した翻訳エンジン
+
+        Returns:
+            str: 保存されたテキストファイルのパス
+        """
+        from datetime import datetime
+
+        # 出力ディレクトリ
+        output_dir = Path("./output/dubbed")
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # ファイル名
+        video_stem = Path(video_path).stem
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        text_filename = f"{video_stem}_translation_{timestamp}.txt"
+        text_path = output_dir / text_filename
+
+        # テキストファイルに書き込み
+        with open(text_path, 'w', encoding='utf-8') as f:
+            f.write("=" * 80 + "\n")
+            f.write("MediaForge Studio - 翻訳結果\n")
+            f.write("=" * 80 + "\n\n")
+
+            f.write(f"元ファイル: {Path(video_path).name}\n")
+            f.write(f"処理日時: {datetime.now().strftime('%Y年%m月%d日 %H:%M:%S')}\n")
+            f.write(f"翻訳エンジン: {translation_engine}\n")
+            f.write(f"言語: {source_lang} → {target_lang}\n")
+            f.write("\n" + "=" * 80 + "\n")
+            f.write("【元のテキスト】\n")
+            f.write("=" * 80 + "\n\n")
+            f.write(original_text)
+            f.write("\n\n" + "=" * 80 + "\n")
+            f.write("【翻訳されたテキスト】\n")
+            f.write("=" * 80 + "\n\n")
+            f.write(translated_text)
+            f.write("\n\n" + "=" * 80 + "\n")
+            f.write("生成: MediaForge Studio\n")
+            f.write("=" * 80 + "\n")
+
+        return str(text_path)
 
 
 class DubbingTab(QWidget):
@@ -266,6 +341,15 @@ class DubbingTab(QWidget):
 
         layout.addLayout(voice_layout)
 
+        # テキスト保存オプション
+        text_save_layout = QHBoxLayout()
+        self.save_text_checkbox = CheckBox("翻訳結果をテキストファイルに保存")
+        self.save_text_checkbox.setChecked(True)  # デフォルトで有効
+        text_save_layout.addWidget(self.save_text_checkbox)
+        text_save_layout.addStretch()
+
+        layout.addLayout(text_save_layout)
+
         return widget
 
     def on_browse_clicked(self) -> None:
@@ -344,10 +428,13 @@ class DubbingTab(QWidget):
         else:
             voice = voice_text.split(" ")[0]
 
+        # テキスト保存オプションを取得
+        save_text = self.save_text_checkbox.isChecked()
+
         logger.info(
             f"Starting dubbing: video={self.selected_video_path}, "
             f"lang={target_lang}, tts={tts_engine}, voice={voice}, "
-            f"voice_text={voice_text}"
+            f"voice_text={voice_text}, save_text={save_text}"
         )
 
         # UIを更新
@@ -364,7 +451,8 @@ class DubbingTab(QWidget):
             self.selected_video_path,
             target_lang,
             tts_engine,
-            voice
+            voice,
+            save_text
         )
 
     def start_worker_thread(self) -> None:
@@ -389,21 +477,29 @@ class DubbingTab(QWidget):
         self.progress_bar.setValue(percent)
         self.status_label.setText(message)
 
-    def on_dubbing_finished(self, output_path: str) -> None:
+    def on_dubbing_finished(self, output_path: str, text_path: str = "") -> None:
         """吹き替え完了"""
-        self.result_text.setPlainText(
+        result_message = (
             f"✅ 吹き替え音声が生成されました！\n\n"
-            f"出力ファイル:\n{output_path}\n\n"
-            f"この音声ファイルを動画に合成する場合は、\n"
+            f"出力ファイル:\n音声: {output_path}\n"
+        )
+
+        if text_path:
+            result_message += f"テキスト: {text_path}\n"
+
+        result_message += (
+            f"\nこの音声ファイルを動画に合成する場合は、\n"
             f"動画編集ソフトをご使用ください。"
         )
+
+        self.result_text.setPlainText(result_message)
 
         self.execute_btn.setEnabled(True)
         self.execute_btn.setText("吹き替え開始")
 
         self.show_success("吹き替え音声の生成が完了しました")
 
-        logger.info(f"Dubbing completed: {output_path}")
+        logger.info(f"Dubbing completed: audio={output_path}, text={text_path}")
 
     def on_error(self, error_message: str) -> None:
         """エラー発生"""

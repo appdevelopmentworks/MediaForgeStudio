@@ -123,27 +123,72 @@ class AudioMerger:
         )
 
         try:
+            # すべてのファイルを統一フォーマットに変換（中間ファイル作成）
+            normalized_paths = []
+
+            for i, audio_path in enumerate(audio_paths):
+                # 中間ファイルのパス
+                temp_audio = self.temp_dir / f"normalized_audio_{i}.wav"
+
+                # WAVに変換（サンプリングレート、チャンネルを統一）
+                normalize_cmd = [
+                    "ffmpeg",
+                    "-i", str(Path(audio_path).resolve()),
+                    "-ar", "44100",  # サンプリングレート統一
+                    "-ac", "2",       # ステレオに統一
+                    "-y",
+                    str(temp_audio.resolve())
+                ]
+
+                logger.debug(f"Normalizing audio {i+1}/{len(audio_paths)}: {audio_path}")
+
+                result = subprocess.run(
+                    normalize_cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=300
+                )
+
+                if result.returncode != 0:
+                    logger.error(f"Failed to normalize audio: {result.stderr}")
+                    raise AudioMergeError(f"Failed to normalize audio {audio_path}")
+
+                normalized_paths.append(temp_audio)
+
             # ファイルリストを作成
             filelist_path = self.temp_dir / "audio_filelist.txt"
 
             with open(filelist_path, "w", encoding="utf-8") as f:
-                for audio_path in audio_paths:
-                    abs_path = Path(audio_path).resolve()
-                    f.write(f"file '{abs_path}'\n")
+                for norm_path in normalized_paths:
+                    # 絶対パスに変換してからスラッシュ形式に統一
+                    abs_path = norm_path.resolve()
+                    path_str = str(abs_path).replace("\\", "/")
+                    f.write(f"file '{path_str}'\n")
+                    logger.debug(f"Added to filelist: {path_str}")
 
             logger.debug(f"Created audio filelist: {filelist_path}")
 
-            # FFmpegコマンド
+            # ファイルリストの内容を確認（デバッグ用）
+            with open(filelist_path, "r", encoding="utf-8") as f:
+                filelist_content = f.read()
+                logger.debug(f"Filelist content:\n{filelist_content}")
+
+            # FFmpegコマンド（絶対パスに変換してスラッシュ形式に統一）
+            filelist_path_str = str(filelist_path.resolve()).replace("\\", "/")
+            output_path_str = str(output_path.resolve()).replace("\\", "/")
+
             command = [
                 "ffmpeg",
                 "-f", "concat",
                 "-safe", "0",
-                "-i", str(filelist_path),
+                "-i", filelist_path_str,
                 "-c:a", self._get_audio_codec(format),
                 "-b:a", bitrate,
                 "-y",
-                str(output_path)
+                output_path_str
             ]
+
+            logger.debug(f"FFmpeg command: {' '.join(command)}")
 
             # 実行
             loop = asyncio.get_event_loop()
@@ -159,10 +204,17 @@ class AudioMerger:
 
             if result.returncode != 0:
                 logger.error(f"FFmpeg error: {result.stderr}")
+                logger.error(f"FFmpeg stdout: {result.stdout}")
                 raise AudioMergeError(f"FFmpeg failed: {result.stderr}")
 
             # ファイルリストを削除
             filelist_path.unlink()
+
+            # 中間ファイルを削除
+            for norm_path in normalized_paths:
+                if norm_path.exists():
+                    norm_path.unlink()
+                    logger.debug(f"Deleted normalized file: {norm_path}")
 
             # 進捗コールバック
             if progress_callback:
@@ -184,6 +236,21 @@ class AudioMerger:
 
         except Exception as e:
             logger.error(f"Audio merge failed: {e}")
+
+            # エラー時も中間ファイルをクリーンアップ
+            try:
+                if 'normalized_paths' in locals():
+                    for norm_path in normalized_paths:
+                        if norm_path.exists():
+                            norm_path.unlink()
+                            logger.debug(f"Cleaned up normalized file: {norm_path}")
+
+                if 'filelist_path' in locals() and filelist_path.exists():
+                    filelist_path.unlink()
+                    logger.debug(f"Cleaned up filelist: {filelist_path}")
+            except Exception as cleanup_error:
+                logger.warning(f"Failed to cleanup temp files: {cleanup_error}")
+
             raise AudioMergeError(f"Failed to merge audios: {str(e)}")
 
     async def mix_audios(
