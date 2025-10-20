@@ -35,6 +35,9 @@ venv.bak/
 *~
 .DS_Store
 
+# Claude Code local settings (personal permissions)
+.claude/settings.local.json
+
 # Environment Variables
 .env
 *.env
