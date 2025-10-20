@@ -1,0 +1,175 @@
+# MediaForge Studio - Configuration File
+version: "1.0.0"
+app_name: "MediaForge Studio"
+
+# Application Settings
+app:
+  theme: "auto"  # light / dark / auto
+  language: "ja"
+  log_level: "INFO"  # DEBUG / INFO / WARNING / ERROR
+  
+# Window Settings
+window:
+  width: 1200
+  height: 800
+  min_width: 800
+  min_height: 600
+  
+# Download Settings
+download:
+  default_resolution: "720p"  # 480p / 720p / 1080p / best
+  max_concurrent: 3
+  output_dir: "./output/videos"
+  retry_count: 3
+  retry_delay: [5, 10, 30]  # seconds
+  
+# Audio Extract Settings
+audio:
+  default_bitrate: "128k"  # 128k / 192k / 320k
+  output_dir: "./output/audios"
+  format: "mp3"
+  
+# Dubbing Settings
+dubbing:
+  output_dir: "./output/dubbed"
+  
+# TTS Settings
+tts:
+  default_engine: "edge_tts"  # edge_tts / voicevox / google_tts / pyttsx3
+  
+  # edge_tts configuration
+  edge_tts:
+    default_voice: "ja-JP-NanamiNeural"
+    available_voices:
+      - "ja-JP-NanamiNeural"    # 女性・明るい（推奨）
+      - "ja-JP-KeitaNeural"     # 男性・落ち着き（推奨）
+      - "ja-JP-ShioriNeural"    # 女性・落ち着き（推奨）
+      - "ja-JP-AoiNeural"       # 女性・若々しい
+      - "ja-JP-DaichiNeural"    # 男性・力強い
+      - "ja-JP-MayuNeural"      # 女性・優しい
+      - "ja-JP-NaokiNeural"     # 男性・温かい
+    default_rate: 1.0   # 0.5 - 2.0
+    default_pitch: 1.0  # 0.8 - 1.2
+    default_volume: 1.0 # 0.0 - 2.0
+  
+  # VOICEVOX configuration
+  voicevox:
+    host: "localhost"
+    port: 50021
+    timeout: 30
+    retry_count: 3
+    default_speaker: 3  # ずんだもん
+    
+    available_speakers:
+      "ずんだもん": 3
+      "四国めたん": 2
+      "春日部つむぎ": 8
+      "雨晴はう": 10
+      "波音リツ": 9
+    
+    available_emotions:
+      - "ノーマル"
+      - "あまあま"
+      - "ツンツン"
+      - "セクシー"
+      - "ささやき"
+  
+  # Google Cloud TTS configuration (optional)
+  google_tts:
+    default_voice: "ja-JP-Neural2-B"
+    language_code: "ja-JP"
+  
+  # pyttsx3 configuration (fallback)
+  pyttsx3:
+    rate: 150
+    volume: 0.9
+
+# Translation Settings
+translation:
+  default_api: "argos"  # argos / deepl / groq / gemini / openai / auto
+  target_language: "ja"
+  cache_enabled: true
+  
+  # Supported languages
+  supported_languages:
+    "en": "英語"
+    "ko": "韓国語"
+    "zh": "中国語（簡体字）"
+    "zh-tw": "中国語（繁体字）"
+    "es": "スペイン語"
+    "fr": "フランス語"
+    "de": "ドイツ語"
+    "ru": "ロシア語"
+    "pt": "ポルトガル語"
+    "he": "ヘブライ語"
+    "ar": "アラビア語"
+    "uk": "ウクライナ語"
+    "ja": "日本語"
+  
+  # Argos Translate (offline, free)
+  argos:
+    model_path: "./models/argos"
+  
+  # DeepL API (optional, high quality)
+  deepl:
+    enabled: false
+  
+  # Groq API (optional, free, fast)
+  groq:
+    enabled: false
+    model: "llama3-groq-70b-8192-tool-use-preview"
+  
+  # Gemini API (optional, free)
+  gemini:
+    enabled: false
+    model: "gemini-1.5-flash"
+  
+  # OpenAI API (optional, high quality)
+  openai:
+    enabled: false
+    model: "gpt-4o-mini"
+
+# Whisper Settings
+whisper:
+  model: "medium"  # tiny / base / small / medium / large-v2 / large-v3
+  device: "auto"   # auto / cuda / cpu / mps
+  language: "auto" # auto detection or specify language code
+  
+# Video Merge Settings
+video_merge:
+  output_dir: "./output/videos"
+  default_resolution: "720p"
+  default_transition: "none"  # none / fade / crossfade
+  transition_duration: 0.5    # seconds
+  
+# Audio Merge Settings
+audio_merge:
+  output_dir: "./output/audios"
+  normalize: true
+  default_bitrate: "128k"
+  
+# Processing Settings
+processing:
+  max_workers: 3
+  enable_gpu: true
+  temp_dir: "./temp"
+  keep_temp_files: false
+  
+# Database Settings
+database:
+  path: "./data/mediaforge.db"
+  
+# Logging Settings
+logging:
+  log_dir: "./logs"
+  level: "INFO"
+  format: "{time:YYYY-MM-DD HH:mm:ss} | {level} | {name} | {message}"
+  rotation: "1 week"
+  retention: "1 month"
+  max_size: "10 MB"
+  
+# File Naming
+file_naming:
+  sanitize: true
+  max_length: 200
+  use_youtube_title: true
