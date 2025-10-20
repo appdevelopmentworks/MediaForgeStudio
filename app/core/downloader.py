@@ -64,6 +64,10 @@ class YouTubeDownloader:
         self.max_concurrent = max_concurrent
         self._semaphore = asyncio.Semaphore(max_concurrent)
 
+        # キャンセル管理用
+        self._active_downloads: dict[str, asyncio.Task] = {}
+        self._cancel_flags: dict[str, bool] = {}
+
         logger.info(
             f"YouTubeDownloader initialized: "
             f"output_dir={self.output_dir}, max_concurrent={max_concurrent}"
@@ -170,6 +174,9 @@ class YouTubeDownloader:
             ...     progress_callback=on_progress
             ... )
         """
+        # キャンセルフラグを初期化
+        self._cancel_flags[url] = False
+
         async with self._semaphore:
             try:
                 from datetime import datetime
@@ -182,6 +189,10 @@ class YouTubeDownloader:
 
                 # 進捗フック
                 def progress_hook(d):
+                    # キャンセルチェック
+                    if self._cancel_flags.get(url, False):
+                        raise DownloadError("Download cancelled by user")
+
                     if progress_callback is None:
                         return
 
@@ -286,10 +297,26 @@ class YouTubeDownloader:
 
             except Exception as e:
                 logger.error(f"Unexpected error during download: {e}")
+
+                # キャンセルの場合
+                if self._cancel_flags.get(url, False):
+                    logger.info(f"Download cancelled: {url}")
+                    return DownloadResult(
+                        status=DownloadStatus.FAILED,
+                        error_message="Download cancelled by user"
+                    )
+
                 return DownloadResult(
                     status=DownloadStatus.FAILED,
                     error_message=f"Unexpected error: {str(e)}"
                 )
+
+            finally:
+                # クリーンアップ
+                if url in self._cancel_flags:
+                    del self._cancel_flags[url]
+                if url in self._active_downloads:
+                    del self._active_downloads[url]
 
     async def download_batch(
         self,
@@ -513,14 +540,41 @@ class YouTubeDownloader:
 
     async def cancel_download(self, url: str) -> bool:
         """
-        ダウンロードをキャンセル（将来的な実装）
+        ダウンロードをキャンセル
 
         Args:
             url: キャンセルする動画のURL
 
         Returns:
             bool: キャンセルに成功した場合True
+
+        Example:
+            >>> await downloader.cancel_download("https://youtube.com/watch?v=...")
+            True
         """
-        # TODO: ダウンロードキャンセル機能の実装
-        logger.warning("Download cancellation not implemented yet")
-        return False
+        try:
+            if url not in self._cancel_flags:
+                logger.warning(f"Download not found for cancellation: {url}")
+                return False
+
+            # キャンセルフラグを設定
+            self._cancel_flags[url] = True
+
+            logger.info(f"Download cancellation requested: {url}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to cancel download: {e}")
+            return False
+
+    def is_downloading(self, url: str) -> bool:
+        """
+        指定されたURLのダウンロードが実行中かチェック
+
+        Args:
+            url: YouTube動画URL
+
+        Returns:
+            bool: ダウンロード中の場合True
+        """
+        return url in self._cancel_flags and not self._cancel_flags[url]
