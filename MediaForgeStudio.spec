@@ -103,7 +103,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='arisa004.ico',  # アプリアイコン
+    icon='Appimg.ico',  # アプリアイコン
 )
 
 coll = COLLECT(

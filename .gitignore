@@ -37,6 +37,7 @@ venv.bak/
 
 # Claude Code local settings (personal permissions)
 .claude/settings.local.json
+.claude/
 
 # Environment Variables
 .env
@@ -66,6 +67,12 @@ build/
 dist/
 # *.spec  # Commented out - MediaForgeStudio.spec is needed for builds
 !MediaForgeStudio.spec
+
+# Nuitka build files
+nuitka_build/
+*.build/
+*.dist/
+*.onefile-build/
 
 # Jupyter Notebook
 .ipynb_checkpoints
